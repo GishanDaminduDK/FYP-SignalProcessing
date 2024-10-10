@@ -1,7 +1,10 @@
-fileFullPath_1 = 'D:\Drone-Swarm-Detection-with-AWR2243\Our data\Radar_Data\phantom_forward_2\master_0000_data.bin';
+fileFullPath_1 = 'D:\Drone-Swarm-Detection-with-AWR2243\Our data\Radar_Data\waruna_drone\waruna_forward\master_0000_data.bin';
+%fileFullPath_2 ='D:\Drone-Swarm-Detection-with-AWR2243\Our data\Radar_Data\waruna_drone\normal_envi\master_0000_data.bin';
 outputFilePath = 'chirp_samples_fly_drone_15.txt'; % Output text file
+file_paths = {fileFullPath_1} % Use cell array for paths
+frame_indices = [15,40,40,60]; % Use square brackets for array
 %fileFullPath_2 ='D:\FYP_AI\small_drone\Normal_envionment\master_0000_data.bin';
-frameIdx = 15;             % Index of the frame you want to read
+frameIdx = 20;             % Index of the frame you want to read
 numSamplePerChirp = 256;    % Number of samples per chirp
 numChirpPerLoop = 12;       % Number of chirps per loop
 numLoops = 128;              % Number of loops per frame
@@ -17,12 +20,25 @@ antennaIdx = 4;
 Nfft_range = 300;           % Number of FFT points for range dimension
 Nfft_doppler = 97;  
 % Read binary file data
-[adcData1Complex] = readBinFile(fileFullPath_1 , frameIdx, numSamplePerChirp, numChirpPerLoop, numLoops, numRXPerDevice);
 %[adcData1Complex_2] = readBinFile(fileFullPath_2, frameIdx, numSamplePerChirp, numChirpPerLoop, numLoops, numRXPerDevice);
 % Subtract the data from the two environments
-antennaIdx=4;
+adc_raw_data = 0; % Initialize adc_raw_data as zero matrix with the same dimensions as adcData
+
+% Read binary file data
+for i = 1:length(file_paths)
+    [adcData] = readBinFile(file_paths{i}, frame_indices(i), numSamplePerChirp, numChirpPerLoop, numLoops, numRXPerDevice);
+    
+    % Initialize adc_raw_data on the first iteration
+    if i == 1
+        adc_raw_data = zeros(size(adcData)); % Initialize to match the size of adcData
+    end
+    
+    adc_raw_data = adc_raw_data+adcData; % Add matrices element-wise
+end
+
 % Extract the chirp ADC matrix for all loops and the selected antenna
-chirp_ADC_matrix = adcData1Complex(:, :, antennaIdx, :);
+antennaIdx = 4;
+chirp_ADC_matrix = adc_raw_data(:, :, antennaIdx, :);
 % Open the output text file for writing
 fid = fopen(outputFilePath, 'w');
 if fid == -1
@@ -78,7 +94,7 @@ phase_shift = 2 * pi * frequency_shift * time;
 
 % Apply the phase shift to the radar data
 shifted_data_array = radar_data .* exp(-1j * phase_shift);
- velocity_shift=0;
+velocity_shift=0;
 
 n_chirps = size(shifted_data_array, 1);  % Get the number of chirps
 time = (0:n_chirps-1)' * chirp_duration;  % Create the time vector as a column vector
@@ -116,23 +132,28 @@ velocity_Resolution  = lambda / (2 * numLoops * chirpDuration * 12);
 doppler_fft = doppler_fft * velocity_Resolution;              % Velocity axis using Doppler shift
 magnitude_array = 20*log10(abs(doppler_fft));
 % Create a logical array that checks if values in columns 48, 49, or 50 exceed 110
-rows_exceeding_110 = find(magnitude_array(:, 48) > 115 | magnitude_array(:, 49) > 115 | magnitude_array(:, 50) > 115);
-% Find the rows where values in columns 48, 49, or 50 are less than 110
+%Find the rows where values in columns 48, 49, or 50 are less than 110
 % Find the rows where values in columns 48, 49, or 50 exceed 110
-magnitude_array(:, 48)=40;
-magnitude_array(:, 49)=40;
-magnitude_array(:, 50)=40;
+magnitude_array(:, 48)=30;
+magnitude_array(:, 49)=30;
+magnitude_array(:, 50)=30;
+%magnitude_array(1:10, :) = 40;    % Set row 100 to 40
 % Display the row numbers and corresponding values in columns 48, 49, and 50
-for i = 1:length(rows_exceeding_110)
-    row = rows_exceeding_110(i);
-    fprintf('Row: %d, Col 48: %.2f, Col 49: %.2f, Col 50: %.2f\n', row, ...
-        magnitude_array(row, 48), magnitude_array(row, 49), magnitude_array(row, 50));
-end
+% for i = 1:length(rows_exceeding_110)
+%     row = rows_exceeding_110(i);
+%     fprintf('Row: %d, Col 48: %.2f, Col 49: %.2f, Col 50: %.2f\n', row, ...
+%         magnitude_array(row, 48), magnitude_array(row, 49), magnitude_array(row, 50));
+% end
 
-rows_to_replace = magnitude_array(:, 48) < 110 | magnitude_array(:, 49) < 110 | magnitude_array(:, 50) < 110;
+%rows_to_replace = magnitude_array(:, 48) < 110 | magnitude_array(:, 49) < 110 | magnitude_array(:, 50) < 110;
 
 % Replace the values in those rows in columns 48, 49, and 50 with 80
 %magnitude_array(rows_to_replace, 48:50) = 70;
+% Find the maximum value in magnitude_array and its corresponding indices
+% Find the maximum value and its location in the array
+[max_value, linear_index] = max(magnitude_array(:));
+[row, col] = ind2sub(size(magnitude_array), linear_index);
+
 
 % Display the row numbers
 %disp(rows_exceeding_110);
