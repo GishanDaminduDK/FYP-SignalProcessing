@@ -1,7 +1,7 @@
-fileFullPath_1 = 'D:\Drone-Swarm-Detection-with-AWR2243\Our data\Radar_Data\phantom_forward_2\master_0000_data.bin';
+fileFullPath_1 = 'D:\Drone-Swarm-Detection-with-AWR2243\Our data\Radar_Data\phantom_forward_2\slave3_0000_data.bin';
 outputFilePath = 'chirp_samples_fly_drone_15.txt'; % Output text file
 %fileFullPath_2 ='D:\FYP_AI\small_drone\Normal_envionment\master_0000_data.bin';
-frameIdx = 15;             % Index of the frame you want to read
+frameIdx = 20;             % Index of the frame you want to read
 numSamplePerChirp = 256;    % Number of samples per chirp
 numChirpPerLoop = 12;       % Number of chirps per loop
 numLoops = 128;              % Number of loops per frame
@@ -14,7 +14,7 @@ sweepBandwidth = 0.899451e9;     % Bandwidth of the FMCW radar sweep (3.16 GHz)
 chirpDuration = 30e-6;       % Chirp duration (40 microseconds)
 antennaIdx = 4; 
 % FFT parameters
-Nfft_range = 300;           % Number of FFT points for range dimension
+Nfft_range = 256;           % Number of FFT points for range dimension
 Nfft_doppler = 97;  
 % Read binary file data
 [adcData1Complex] = readBinFile(fileFullPath_1 , frameIdx, numSamplePerChirp, numChirpPerLoop, numLoops, numRXPerDevice);
@@ -22,34 +22,11 @@ Nfft_doppler = 97;
 % Subtract the data from the two environments
 antennaIdx=4;
 % Extract the chirp ADC matrix for all loops and the selected antenna
-chirp_ADC_matrix = adcData1Complex(:, :, antennaIdx, :);
-% Open the output text file for writing
-fid = fopen(outputFilePath, 'w');
-if fid == -1
-    error('Failed to open the output file.');
-end
+chirp_ADC_matrix = adcData1Complex(:, :, antennaIdx,4);
 
-% Write chirp samples to the file, loop by loop, chirp by chirp
-for loopIdx = 1:numLoops
-    for chirpIdx = 1:numChirpPerLoop
-        samples = chirp_ADC_matrix(:, loopIdx, chirpIdx);
-        
-        % Write each complex sample on a new line in the format: real + j*imag
-        for sampleIdx = 1:numSamplePerChirp
-            realPart = real(samples(sampleIdx));
-            imagPart = imag(samples(sampleIdx));
-            fprintf(fid, '%f + j*%f\n', realPart, imagPart);
-        end
-    end
-end
-
-% Close the file
-fclose(fid);
-
-%disp(['Chirp samples have been written to ', outputFilePath]);
 % Remove singleton dimensions and reshape for FFT processing
 chirp_ADC_matrix = squeeze(chirp_ADC_matrix);
-reshaped_matrix = reshape(chirp_ADC_matrix, numSamplePerChirp, numLoops * numChirpPerLoop);
+reshaped_matrix = reshape(chirp_ADC_matrix, numSamplePerChirp, numLoops );
 disp(size(reshaped_matrix));  % Should display [256, numLoops*numChirpPerLoop]
 radar_data = reshaped_matrix';
 disp(size(radar_data));
@@ -78,7 +55,7 @@ phase_shift = 2 * pi * frequency_shift * time;
 
 % Apply the phase shift to the radar data
 shifted_data_array = radar_data .* exp(-1j * phase_shift);
-velocity_shift=30;
+velocity_shift=20;
 
 n_chirps = size(shifted_data_array, 1);  % Get the number of chirps
 time = (0:n_chirps-1)' * chirp_duration;  % Create the time vector as a column vector
@@ -87,8 +64,7 @@ time = (0:n_chirps-1)' * chirp_duration;  % Create the time vector as a column v
 frequency_shift = 2 * slope * velocity_shift / (3e8);  % Speed of light in m/s
 
 % Calculate the phase shift
-phase_shift = 2 * pi * frequency_shift * time;  % Phase shift calculation
-
+phase_shift = 2 * pi * frequency_shift * time;  % Phase shift calculation  
 % Apply the phase shift to the radar data
 shifted_data_array = shifted_data_array .* exp(1j * phase_shift);  % Element-wise multiplication
 
@@ -130,11 +106,6 @@ end
 rows_to_replace = magnitude_array(:, 48) < 110 | magnitude_array(:, 49) < 110 | magnitude_array(:, 50) < 110;
 
 % Replace the values in those rows in columns 48, 49, and 50 with 80
-magnitude_array(:, 58)=40;
-magnitude_array(:, 59)=40;
-magnitude_array(:, 60)=40;
-magnitude_array(:, 61)=40;
-magnitude_array(:, 62)=40;
 % Display the row numbers
 %disp(rows_exceeding_110);
 figure;
