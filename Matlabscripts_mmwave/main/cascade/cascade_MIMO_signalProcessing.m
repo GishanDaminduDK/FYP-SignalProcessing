@@ -1,42 +1,3 @@
-%  Copyright (C) 2018 Texas Instruments Incorporated - http://www.ti.com/
-%   
-%
-%   Redistribution and use in source and binary forms, with or without
-%   modification, are permitted provided that the following conditions
-%   are met:
-%
-%     Redistributions of source code must retain the above copyright
-%     notice, this list of conditions and the following disclaimer.
-%
-%     Redistributions in binary form must reproduce the above copyright
-%     notice, this list of conditions and the following disclaimer in the
-%     documentation and/or other materials provided with the
-%     distribution.
-%
-%     Neither the name of Texas Instruments Incorporated nor the names of
-%     its contributors may be used to endorse or promote products derived
-%     from this software without specific prior written permission.
-%
-%   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-%   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-%   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-%   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-%   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-%   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-%   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-%   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-%   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-%   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-%   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-%
-%
-
-% cascade_MIMO_signalProcessing.m
-%
-% Top level main test chain to process the raw ADC data. The processing
-% chain including adc data calibration module, range FFT module, DopplerFFT
-% module, CFAR module, DOA module. Each module is first initialized before
-% actually used in the chain.
 
 clearvars
 close all
@@ -62,7 +23,9 @@ dataPlatform = 'TDA2';
 %     "D:\RadarDataset\20241210_hexacopter_ang8\"
 % ];
 folder_paths_of_data = [
-    "D:\RadarDataset\Flying_Drone_Data\3GHz_parameters\phanton3\"
+    "D:\RadarDataset\Flying_Drone_Data\3GHz_parameters\mavic3\",
+    "D:\RadarDataset\Flying_Drone_Data\3GHz_parameters\environment2\",
+    "D:\RadarDataset\Flying_Drone_Data\3GHz_parameters\phantom4\"
 ];
 % Initialize five separate arrays
 radar_data_1 = [];
@@ -85,8 +48,8 @@ for i=1:length(folder_paths_of_data)
     %dataFolder_test = sprintf('D:\\RadarDataset\\20241210_hexacopter_ang%d\\', i);
     disp("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
     disp(dataFolder_test);
-    dataFolder_calib = 'C:\Users\user\Desktop\Matlabscripts\input\calibrateResults_high.mat';
-    module_param_file = 'C:\Users\user\Desktop\Matlabscripts\paramGen\module_param.m';
+    dataFolder_calib = 'D:\FYP-SignalProcessing\Matlabscripts\input\calibrateResults_high.mat';
+    module_param_file = 'D:\FYP-SignalProcessing\Matlabscripts\paramGen\module_param.m';
     %path for input folder
     %fidList = fopen(testList,'r');
     %disp(fidList);
@@ -151,7 +114,7 @@ for i=1:length(folder_paths_of_data)
    [numValidFrames dataFileSize] = getValidNumFrames(fullfile(dataFolder_test, fileNameStruct.masterIdxFile));
    %intentionally skip the first frame due to TDA2 
 
-   for frameIdx = 23:23;%numFrames_toRun
+   for frameIdx = 60:60;%numFrames_toRun
         tic
         %read and calibrate raw ADC data            
         calibrationObj.frameIdx = frameIdx;
@@ -186,13 +149,14 @@ for i=1:length(folder_paths_of_data)
                 radar_data_5 = adcData;
                 fprintf("Store one file radar_data5: %d\n", i);
         end
-        adcData=radar_data_1; 
-        if i==1
+        
+        if i==3
+            adcData=radar_data_1-radar_data_2+radar_data_3-radar_data_2; 
             % Specify the output directory for the wavelet plots
             outputDir = 'D:\FYP-SignalProcessing\DroneSwarmsImages\Wavelet_Plots';
 
             % Call the function
-            plotWaveletForChirps(adcData, outputDir);
+            plotWaveletForChirps(adcData, outputDir, frameIdx);
             
            
             %disp("The adcData matrix size")
@@ -359,7 +323,7 @@ for i=1:length(folder_paths_of_data)
 
             cnt = cnt + 1;    
        toc
-        end
+       end
    end
 
 
@@ -443,14 +407,136 @@ function shiftedData = applyRangeShift(adcData, delta_r, Rmax)
     % Display a confirmation message
     disp('Range shift applied successfully to the radar data cube.');
 end
-function plotWaveletForChirps(adcData, outputDir)
-    % Function to compute and plot wavelet transform for all chirps in groups of 16
-    % Inputs:
-    % - adcData: 3D matrix (size: [samples, chirps, antennas])
-    % - outputDir: Directory to save the wavelet plots
-
+% function plotWaveletForChirps(adcData, outputDir)
+%     % Function to compute and plot wavelet transform for all chirps in groups of 16
+%     % Inputs:
+%     % - adcData: 3D matrix (size: [samples, chirps, antennas])
+%     % - outputDir: Directory to save the wavelet plots
+% 
+%     % Ensure output directory exists
+%     adcData = reshape(adcData,size(adcData,1), size(adcData,2), size(adcData,3)*size(adcData,4));%make 3D
+% 
+%     if ~exist(outputDir, 'dir')
+%         mkdir(outputDir);
+%     end
+% 
+%     % Define sampling frequency
+%     Fs = 8e6; % 8 MHz
+% 
+%     % Total number of chirps
+%     totalChirps = size(adcData, 2);
+% 
+%     % Loop over chirps in groups of 16
+%     chirpsPerGroup = 16;
+%     numGroups = ceil(totalChirps / chirpsPerGroup);
+% 
+%     for groupIdx = 1:numGroups
+%         % Determine chirps in the current group
+%         startChirp = (groupIdx - 1) * chirpsPerGroup + 1;
+%         endChirp = min(groupIdx * chirpsPerGroup, totalChirps);
+% 
+%         
+%             % Select data for the current chirp
+%             selectedData = adcData(:, startChirp:endChirp, 1); % Assuming antenna index 1
+%             
+% 
+%             % Flatten the data and convert to complex double
+%             flattenedData = complex(double(real(selectedData(:))), double(imag(selectedData(:))));
+% 
+%             % Separate into real and imaginary parts (optional saving)
+%             realPart = real(flattenedData);
+%             imagPart = imag(flattenedData);
+% 
+%             % Save real and imaginary parts (optional)
+%             %realFile = fullfile(outputDir, sprintf('real_part_chirp%d.mat', groupIdx));
+%             %imagFile = fullfile(outputDir, sprintf('imag_part_chirp%d.mat', chirpIdx));
+%             %save(realFile, 'realPart');
+%             %save(imagFile, 'imagPart');
+% 
+%             % Define time vector
+%             t = (0:length(flattenedData) - 1) / Fs;
+% 
+%             % Perform Continuous Wavelet Transform (CWT) for real part
+%             [cfs_real, f_real] = cwt(realPart, Fs);
+% 
+%             % Plot wavelet transform for real part
+%             %{
+%             figure;
+%             % Contour plot for real part
+%             subplot(2, 1, 1);
+%             contour(t, f_real, abs(cfs_real).^2);
+%             axis tight;
+%             grid on;
+%             xlabel('Time (s)');
+%             ylabel('Frequency (Hz)');
+%             title(sprintf('CWT Contour Plot (Real Part) - Chirp %d', groupIdx));
+%             ylim([0 1.6e6]);
+%             xlim([0 2e-4]);
+%             %}
+%             % Pcolor plot for real part
+%             figure;
+%             h_real = pcolor(t, f_real, abs(cfs_real).^2);
+%             set(h_real, 'EdgeColor', 'none');
+%             colormap jet;
+%             colorbar;
+%             xlabel('Time (s)');
+%             ylabel('Frequency (Hz)');
+%             title(sprintf('CWT Pcolor Plot (Real Part) - Chirpgroup %d', groupIdx));
+%             ylim([0 1.6e6]);
+%             xlim([0 2e-4]);
+%             
+%             hold on;
+%             contour(t, f_real, abs(cfs_real).^2, 'LineWidth', 1, 'LineColor', 'k'); % Add contour lines with black edges
+%             hold off;
+% 
+%             % Save the real part plot
+%             saveas(gcf, fullfile(outputDir, sprintf('phantomchirpgroup%d_wavelet_real.png', groupIdx)));
+%             close(gcf);
+% 
+%             % Perform Continuous Wavelet Transform (CWT) for imaginary part
+%             [cfs_imag, f_imag] = cwt(imagPart, Fs);
+% 
+%             % Plot wavelet transform for imaginary part
+%             %{
+%             figure;
+%             % Contour plot for imaginary part
+%             subplot(2, 1, 1);
+%             contour(t, f_imag, abs(cfs_imag).^2);
+%             axis tight;
+%             grid on;
+%             xlabel('Time (s)');
+%             ylabel('Frequency (Hz)');
+%             title(sprintf('CWT Contour Plot (Imaginary Part) - Chirp %d', groupIdx));
+%             ylim([0 1.6e6]);
+%             xlim([0 2e-4]);
+%             %}
+%             
+%             % Pcolor plot for imaginary part
+%             figure;
+%             h_imag = pcolor(t, f_imag, abs(cfs_imag).^2);
+%             set(h_imag, 'EdgeColor', 'none');
+%             colormap jet;
+%             colorbar;
+%             xlabel('Time (s)');
+%             ylabel('Frequency (Hz)');
+%             title(sprintf('CWT Pcolor Plot (Imaginary Part) - Chirp %d', groupIdx));
+%             ylim([0 1.6e6]);
+%             xlim([0 2e-4]);
+%             % Overlay contours on the pcolor plot for enhanced visualization
+%             hold on;
+%             contour(t, f_imag, abs(cfs_imag).^2, 'LineWidth', 1, 'LineColor', 'k'); % Add contour lines with black edges
+%             hold off;
+% 
+%             % Save the imaginary part plot
+%             saveas(gcf, fullfile(outputDir, sprintf('phantomchirp%d_wavelet_imag.png', groupIdx)));
+%             close(gcf);
+%     end
+% 
+%     disp('Wavelet plots for all chirps have been generated and saved.');
+% end
+function plotWaveletForChirps(adcData, outputDir, frame_index_val)
     % Ensure output directory exists
-    adcData = reshape(adcData,size(adcData,1), size(adcData,2), size(adcData,3)*size(adcData,4));%make 3D
+    adcData = reshape(adcData, size(adcData,1), size(adcData,2), size(adcData,3) * size(adcData,4)); % Convert to 3D
 
     if ~exist(outputDir, 'dir')
         mkdir(outputDir);
@@ -471,102 +557,57 @@ function plotWaveletForChirps(adcData, outputDir)
         startChirp = (groupIdx - 1) * chirpsPerGroup + 1;
         endChirp = min(groupIdx * chirpsPerGroup, totalChirps);
 
-        
-            % Select data for the current chirp
-            selectedData = adcData(:, startChirp:endChirp, 1); % Assuming antenna index 1
+        % Select data for the current chirp group
+        selectedData = adcData(:, startChirp:endChirp, 1); % Assuming antenna index 1
 
-            % Flatten the data and convert to complex double
-            flattenedData = complex(double(real(selectedData(:))), double(imag(selectedData(:))));
+        % Flatten the data and convert to complex double
+        flattenedData = complex(double(real(selectedData(:))), double(imag(selectedData(:))));
 
-            % Separate into real and imaginary parts (optional saving)
-            realPart = real(flattenedData);
-            imagPart = imag(flattenedData);
+        % Define time vector
+        t = (0:length(flattenedData) - 1) / Fs;
 
-            % Save real and imaginary parts (optional)
-            %realFile = fullfile(outputDir, sprintf('real_part_chirp%d.mat', groupIdx));
-            %imagFile = fullfile(outputDir, sprintf('imag_part_chirp%d.mat', chirpIdx));
-            %save(realFile, 'realPart');
-            %save(imagFile, 'imagPart');
+        % Perform Continuous Wavelet Transform (CWT)
+        [cfs_real, f_real] = cwt(real(flattenedData), Fs);
+        [cfs_imag, f_imag] = cwt(imag(flattenedData), Fs);
 
-            % Define time vector
-            t = (0:length(flattenedData) - 1) / Fs;
+        % Compute magnitude of wavelet coefficients
+        cfs_magnitude = abs(cfs_real + 1i * cfs_imag);
 
-            % Perform Continuous Wavelet Transform (CWT) for real part
-            [cfs_real, f_real] = cwt(realPart, Fs);
+        % Third plot: Magnitude of wavelet coefficients
+       figure;
+        h_mag = pcolor(t, f_real, abs(cfs_magnitude).^2);
+        set(h_mag, 'EdgeColor', 'none');
+        colormap jet;
+        %colorbar;
 
-            % Plot wavelet transform for real part
-            %{
-            figure;
-            % Contour plot for real part
-            subplot(2, 1, 1);
-            contour(t, f_real, abs(cfs_real).^2);
-            axis tight;
-            grid on;
-            xlabel('Time (s)');
-            ylabel('Frequency (Hz)');
-            title(sprintf('CWT Contour Plot (Real Part) - Chirp %d', groupIdx));
-            ylim([0 1.6e6]);
-            xlim([0 2e-4]);
-            %}
-            % Pcolor plot for real part
-            figure;
-            h_real = pcolor(t, f_real, abs(cfs_real).^2);
-            set(h_real, 'EdgeColor', 'none');
-            colormap jet;
-            colorbar;
-            xlabel('Time (s)');
-            ylabel('Frequency (Hz)');
-            title(sprintf('CWT Pcolor Plot (Real Part) - Chirpgroup %d', groupIdx));
-            ylim([0 1.6e6]);
-            xlim([0 2e-4]);
-            
-            hold on;
-            contour(t, f_real, abs(cfs_real).^2, 'LineWidth', 1, 'LineColor', 'k'); % Add contour lines with black edges
-            hold off;
+        % Remove x and y axis labels and title
+        xlabel('');
+        ylabel('');
+        title('');
 
-            % Save the real part plot
-            saveas(gcf, fullfile(outputDir, sprintf('chirpgroup%d_wavelet_real.png', groupIdx)));
-            close(gcf);
+        % Hide x and y axis ticks
+        set(gca, 'XTick', [], 'YTick', []);
 
-            % Perform Continuous Wavelet Transform (CWT) for imaginary part
-            [cfs_imag, f_imag] = cwt(imagPart, Fs);
+        % Remove box around the plot
+        box off;
 
-            % Plot wavelet transform for imaginary part
-            %{
-            figure;
-            % Contour plot for imaginary part
-            subplot(2, 1, 1);
-            contour(t, f_imag, abs(cfs_imag).^2);
-            axis tight;
-            grid on;
-            xlabel('Time (s)');
-            ylabel('Frequency (Hz)');
-            title(sprintf('CWT Contour Plot (Imaginary Part) - Chirp %d', groupIdx));
-            ylim([0 1.6e6]);
-            xlim([0 2e-4]);
-            %}
-            
-            % Pcolor plot for imaginary part
-            figure;
-            h_imag = pcolor(t, f_imag, abs(cfs_imag).^2);
-            set(h_imag, 'EdgeColor', 'none');
-            colormap jet;
-            colorbar;
-            xlabel('Time (s)');
-            ylabel('Frequency (Hz)');
-            title(sprintf('CWT Pcolor Plot (Imaginary Part) - Chirp %d', groupIdx));
-            ylim([0 1.6e6]);
-            xlim([0 2e-4]);
-            % Overlay contours on the pcolor plot for enhanced visualization
-            hold on;
-            contour(t, f_imag, abs(cfs_imag).^2, 'LineWidth', 1, 'LineColor', 'k'); % Add contour lines with black edges
-            hold off;
+        % Set limits
+        ylim([0 1.6e6]);
+        xlim([0 2e-4]);
 
-            % Save the imaginary part plot
-            saveas(gcf, fullfile(outputDir, sprintf('chirp%d_wavelet_imag.png', groupIdx)));
-            close(gcf);
+        % Overlay contour lines
+        hold on;
+        contour(t, f_real, abs(cfs_magnitude).^2, 'LineWidth', 1, 'LineColor', 'k'); % Black contour lines
+        hold off;
+
+        % Save the plot without axis and labels
+        saveas(gcf, fullfile(outputDir, sprintf('imag%d_wavelet%d_magnitude.png',frame_index_val,groupIdx)));
+
+        % Close figure to avoid open figure windows
+        close(gcf);
+
+      
     end
 
-    disp('Wavelet plots for all chirps have been generated and saved.');
+    disp('Wavelet plots (real, imaginary, and magnitude with contours) for all chirps have been generated and saved.');
 end
-

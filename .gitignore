@@ -1,1 +1,6 @@
-./DroneSwarmsImages
+# Ignore DroneSwarmsImages directory
+DroneSwarmsImages/
+
+# Ignore specific model files in Spectrograms-CNN-Classification
+Spectrograms-CNN-Classification/best_model_CustomVGG.pt
+Spectrograms-CNN-Classification/best_model_CustomVGG_single.pt
